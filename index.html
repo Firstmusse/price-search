@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Поиск по прайсу</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mu:#6b7280;--bd:#e3e6ea;--ac:#2563eb;--act:#fff;--ok:#16a34a;--bad:#dc2626;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111418;--card:#1b2026;--tx:#e8eaed;--mu:#9aa3ad;--bd:#2c333b;--ac:#4c8dff;--act:#fff;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#111418;--card:#1b2026;--tx:#e8eaed;--mu:#9aa3ad;--bd:#2c333b;--ac:#4c8dff;--act:#fff;color-scheme:dark}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 -apple-system,system-ui,"Segoe UI",Roboto,sans-serif;padding-bottom:40px}
+.top{position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);z-index:5;padding:10px 12px 6px;border-bottom:1px solid var(--bd)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input,select,button{font:inherit;color:var(--tx)}
+input[type=search],select{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;min-width:0}
+input[type=search]{flex:1;width:100%}
+button{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:9px 12px;cursor:pointer}
+button.p{background:var(--ac);border-color:var(--ac);color:var(--act)}
+button.d{color:var(--bad)}
+button:disabled{opacity:.45}
+.tabs{display:flex;gap:6px;margin-top:8px}
+.tabs button{flex:1}
+.tabs button.on{background:var(--ac);color:var(--act);border-color:var(--ac)}
+.wrap{padding:10px 12px;max-width:900px;margin:0 auto}
+.mu{color:var(--mu);font-size:13px}
+.item{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px 12px;margin-bottom:8px;display:grid;grid-template-columns:1fr auto;gap:4px 10px}
+.art{font-weight:600}
+.br{font-size:12px;color:var(--mu);text-transform:uppercase;letter-spacing:.3px}
+.nm{grid-column:1/-1;overflow-wrap:anywhere}
+.pr{font-weight:700;text-align:right;white-space:nowrap}
+.q{font-size:13px;color:var(--mu);text-align:right}
+.act{grid-column:1/-1;display:flex;gap:8px;align-items:center;justify-content:flex-end}
+.act input{width:64px;background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:7px;text-align:center}
+.zero{opacity:.55}
+.hide{display:none}
+.ph{font-size:13px;text-decoration:none;margin-left:8px;opacity:.7}
+.nt{grid-column:1/-1;font-size:13px;color:var(--ac)}
+.drop{border:2px dashed var(--bd);border-radius:14px;padding:22px;text-align:center;background:var(--card);margin:10px 0}
+.tot{display:flex;justify-content:space-between;font-weight:700;font-size:17px;margin:8px 0}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:9px 14px;border-radius:20px;font-size:14px;opacity:0;pointer-events:none;transition:.2s;z-index:9}
+.toast.on{opacity:1}
+.badge{background:var(--bad);color:#fff;border-radius:10px;padding:0 7px;font-size:12px;margin-left:4px}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="row">
+    <input id="q" type="search" placeholder="Артикул или слова: рычаг передний…" autocomplete="off" enterkeyhint="search">
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button id="brBtn">Бренды</button>
+    <select id="sort"><option value="">Сортировка</option><option value="pa">Цена ↑</option><option value="pd">Цена ↓</option><option value="n">По названию</option></select>
+    <button id="mk" title="Настройки" style="padding:6px 9px;opacity:.45">⚙️</button>
+  </div>
+  <div id="brp" class="hide" style="margin-top:8px;background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:8px;max-height:40vh;overflow:auto"><div class="row" style="margin-bottom:6px"><input id="brq" type="search" placeholder="Найти бренд" style="padding:7px 10px"><button id="brx">Сбросить</button></div><div id="brl"></div></div>
+  <div id="mkp" class="row hide" style="margin-top:8px"><span class="mu">Наценка, %</span><input id="mkv" type="number" min="0" step="0.5" inputmode="decimal" style="width:90px;background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:7px"><button id="nsv">Правки → файл</button><button id="nld">Загрузить правки</button><input id="nf" type="file" accept=".json" class="hide"></div>
+  <div class="tabs">
+    <button id="tS" class="on">Поиск</button>
+    <button id="tC">Корзина<span id="cb" class="badge hide">0</span></button>
+    <button id="tU">Прайс</button>
+  </div>
+</div>
+
+<div class="wrap">
+  <section id="vS">
+    <div class="row" style="justify-content:space-between;margin:4px 0 8px">
+      <span id="info" class="mu"></span>
+      <span class="row"><button id="exF" disabled>⬇ Выгрузить</button><button id="snF" class="p" disabled>Отправить</button></span>
+    </div>
+    <div id="sp" class="item hide" style="grid-template-columns:1fr"><label><input type="checkbox" id="wq" checked> Показывать количество (шт.)</label><div class="row"><button id="spGo" class="p">Отправить</button><button id="spX">Отмена</button></div></div>
+    <div id="list"></div>
+    <button id="more" class="hide" style="width:100%">Показать ещё</button>
+  </section>
+
+  <section id="vC" class="hide">
+    <div id="cart"></div>
+    <div id="cartTot" class="tot hide"><span>Итого</span><span id="sum"></span></div>
+    <div class="row">
+      <button id="exC" class="p">⬇ Выгрузить корзину</button>
+      <button id="cp">Копировать</button>
+      <button id="clr" class="d">Очистить список</button>
+    </div>
+  </section>
+
+  <section id="vU" class="hide">
+    <div class="drop">
+      <div style="font-weight:600;margin-bottom:6px">Загрузите прайс .xlsx</div>
+      <div class="mu" style="margin-bottom:12px">Новый файл заменит старый. Данные хранятся в браузере.</div>
+      <input id="file" type="file" accept=".xlsx,.xls,.csv">
+    </div>
+    <div id="meta" class="mu"></div>
+  </section>
+</div>
+<div id="toast" class="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+/* Автономный режим: сохранение файлов через обычную загрузку браузера */
+if(typeof claude==='undefined'){window.claude={use:async()=>({save:async({filename,data})=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data]));a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}})}}
+</script>
+<script>
+const $=s=>document.querySelector(s);
+let DATA=[],META=null,FILT=[],SHOWN=0,CART=[];
+const PAGE=100;
+let NOTES={},NC={};
+let MK=0;try{MK=parseFloat(localStorage.getItem('mk'))||0}catch(e){}
+const pr=p=>Math.round(p*(1+MK/100));
+const photo=x=>`<a class="ph" target="_blank" rel="noopener" title="Фото" href="https://www.google.com/search?tbm=isch&q=${encodeURIComponent(x.b+' '+x.a)}">📷</a>`;
+const norm=s=>String(s==null?'':s).toLowerCase().replace(/ё/g,'е');
+const key_=s=>norm(s).replace(/[\s\-_.\/\\,()]/g,'');
+const fmt=n=>Number(n).toLocaleString('ru-RU');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),1800)}
+
+/* ---------- IndexedDB ---------- */
+function idb(){return new Promise((res,rej)=>{try{const r=indexedDB.open('pricedb',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}})}
+async function dbGet(k){try{const d=await idb();return await new Promise((res,rej)=>{const r=d.transaction('kv').objectStore('kv').get(k);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}catch(e){return null}}
+async function dbSet(k,v){try{const d=await idb();await new Promise((res,rej)=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=res;t.onerror=()=>rej(t.error)})}catch(e){toast('Не удалось сохранить в браузере')}}
+
+/* ---------- Cart (localStorage) ---------- */
+function loadCart(){try{CART=JSON.parse(localStorage.getItem('cart')||'[]')}catch(e){CART=[]}}
+function saveCart(){try{localStorage.setItem('cart',JSON.stringify(CART))}catch(e){}renderBadge()}
+const cid=r=>r.a+'|'+r.b;
+function renderBadge(){const n=CART.length,b=$('#cb');b.textContent=n;b.classList.toggle('hide',!n)}
+
+/* ---------- Parse ---------- */
+function parseSheet(buf){
+  const wb=XLSX.read(buf,{type:'array'});
+  const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:true});
+  if(!rows.length)throw new Error('Пустой файл');
+  const h=rows[0].map(norm);
+  const find=(p,d)=>{const i=h.findIndex(x=>x.startsWith(p));return i>=0?i:d};
+  const ia=find('артикул',1),ib=find('бренд',2),inm=find('наимен',3),ip=find('цена',4),iq=find('кол',5);
+  const out=[];
+  for(let i=1;i<rows.length;i++){
+    const r=rows[i];const a=String(r[ia]??'').trim();
+    if(!a)continue;
+    const p=parseFloat(String(r[ip]).replace(/\s/g,'').replace(',','.'))||0;
+    const q=parseFloat(String(r[iq]).replace(/\s/g,'').replace(',','.'))||0;
+    const b=String(r[ib]??'').trim(),n=String(r[inm]??'').trim();
+    out.push({a,b,n,p,q,c:key_(a+b+n),k:key_(a)});
+  }
+  return out;
+}
+
+/* ---------- Search ---------- */
+function tokens(raw){
+  const t=norm(raw).replace(/[,()]/g,' ').split(/[\s\-_\/]+/).filter(Boolean),o=[];
+  for(let i=0;i<t.length;i++){
+    if(/^[a-z]{1,4}$/.test(t[i])&&t[i+1]&&/^\d/.test(t[i+1])){o.push(t[i]+t[i+1]);i++}else o.push(t[i])}
+  return o.map(w=>/[а-я]/.test(w)&&w.length>=5?w.slice(0,w.length>=7?-2:-1):w);
+}
+let BR=new Set(),BL=[];
+function brBtn(){$('#brBtn').textContent=BR.size?'Бренды ('+BR.size+')':'Бренды';$('#brBtn').classList.toggle('p',BR.size>0)}
+function drawBr(){
+  const q=norm($('#brq').value);
+  $('#brl').innerHTML=BL.filter(b=>norm(b).includes(q)).map(b=>`<label style="display:block;padding:6px 2px"><input type="checkbox" data-b="${esc(b)}"${BR.has(b)?' checked':''}> ${esc(b)}</label>`).join('');
+  brBtn();
+}
+function brands(){
+  BL=[...new Set(DATA.map(r=>r.b).filter(Boolean))].sort();
+  BR=new Set([...BR].filter(b=>BL.includes(b)));
+  drawBr();
+}
+function search(){
+  const raw=$('#q').value.trim(),words=tokens(raw),k=key_(raw);
+  const so=$('#sort').value;
+  let r=DATA;
+  if(BR.size)r=r.filter(x=>BR.has(x.b));
+  if(words.length)r=r.filter(x=>words.every(w=>x.c.includes(w)||(NC[cid(x)]&&NC[cid(x)].includes(w))));
+  if(words.length){const kk=k;r=r.slice().sort((x,y)=>(y.k===kk)-(x.k===kk)||(y.k.startsWith(kk))-(x.k.startsWith(kk)))}
+  if(so==='pa')r=r.slice().sort((x,y)=>x.p-y.p);
+  else if(so==='pd')r=r.slice().sort((x,y)=>y.p-x.p);
+  else if(so==='n')r=r.slice().sort((x,y)=>x.n.localeCompare(y.n,'ru'));
+  FILT=r;SHOWN=0;$('#list').innerHTML='';renderMore();
+  $('#info').textContent=DATA.length?`Найдено: ${fmt(r.length)} из ${fmt(DATA.length)}`:'Прайс не загружен — вкладка «Прайс»';
+  $('#exF').disabled=$('#snF').disabled=!r.length;
+}
+function card(x,i){
+  const inC=CART.find(c=>cid(c)===cid(x));
+  return `<div class="item"><div><div class="art">${esc(x.a)}${photo(x)}</div><div class="br">${esc(x.b)}</div></div>
+  <div><div class="pr">${fmt(pr(x.p))}</div><div class="q">остаток: ${fmt(x.q)}</div></div>
+  <div class="nm">${esc(x.n)}</div>${NOTES[cid(x)]?`<div class="nt">🚗 ${esc(NOTES[cid(x)])}</div>`:''}
+  <div class="act"><button data-e="${i}" title="Для авто" style="margin-right:auto;padding:6px 9px;opacity:.6">✏️</button><input type="number" min="1" max="${x.q||999}" value="1" id="n${i}" inputmode="numeric">
+  <button class="p" data-i="${i}">${inC?'В корзине · +':'В корзину'}</button></div></div>`;
+}
+function renderMore(){
+  const part=FILT.slice(SHOWN,SHOWN+PAGE);
+  $('#list').insertAdjacentHTML('beforeend',part.map((x,j)=>card(x,SHOWN+j)).join(''));
+  SHOWN+=part.length;
+  $('#more').classList.toggle('hide',SHOWN>=FILT.length);
+  if(!FILT.length&&DATA.length)$('#list').innerHTML='<p class="mu">Ничего не найдено</p>';
+}
+
+/* ---------- Cart UI ---------- */
+function addToCart(x,qty){
+  qty=Math.max(1,parseInt(qty)||1);
+  const c=CART.find(c=>cid(c)===cid(x));
+  if(c){c.qty+=qty}else CART.push({a:x.a,b:x.b,n:x.n,p:x.p,max:x.q,qty});
+  saveCart();toast('Добавлено: '+x.a);
+}
+function renderCart(){
+  const el=$('#cart');
+  if(!CART.length){el.innerHTML='<p class="mu">Корзина пуста</p>';$('#cartTot').classList.remove('hide');updSum();['exC','cp','clr'].forEach(i=>$('#'+i).disabled=true);return}
+  ['exC','cp','clr'].forEach(i=>$('#'+i).disabled=false);
+  el.innerHTML=CART.map((c,i)=>`<div class="item"><div><div class="art">${esc(c.a)}</div><div class="br">${esc(c.b)}</div></div>
+  <div class="pr">${fmt(pr(c.p)*c.qty)}</div><div class="nm">${esc(c.n)}</div>
+  <div class="act"><span class="mu" style="margin-right:auto">${fmt(pr(c.p))} × (макс. ${fmt(c.max)})</span>
+  <input type="number" min="1" value="${c.qty}" data-q="${i}" inputmode="numeric"><button class="d" data-rm="${i}">✕</button></div></div>`).join('');
+  $('#cartTot').classList.remove('hide');
+  updSum();
+}
+function updSum(){$('#sum').textContent=fmt(CART.reduce((s,c)=>s+pr(c.p)*c.qty,0))+' · '+CART.reduce((s,c)=>s+c.qty,0)+' шт.'}
+
+/* ---------- Export ---------- */
+async function saveXlsx(rows,share,brand){
+  const name='Прайс '+(brand?brand.replace(/[^0-9a-zа-яё .()+&-]+/gi,'-')+' ':'')+today()+'.xlsx';
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=Object.keys(rows[0]||{}).map(k=>({wch:Math.min(120,rows.reduce((m,r)=>Math.max(m,String(r[k]??'').length),k.length)+3)}));
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Список');
+  const buf=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+  if(share&&navigator.canShare){try{const f=new File([buf],name,{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});if(navigator.canShare({files:[f]})){await navigator.share({files:[f],title:name});return}}catch(e){if(e&&e.name==='AbortError')return}}
+  let dl=null;try{dl=await claude.use('downloads')}catch(e){}
+  if(!dl){toast('Сохранение недоступно в этом окне');return}
+  try{await dl.save({filename:name,data:buf});toast('Файл готов')}catch(e){if(e&&e.code!=='declined')toast('Не удалось сохранить')}
+}
+const today=()=>{const d=new Date(),p=n=>String(n).padStart(2,'0');return p(d.getDate())+'.'+p(d.getMonth()+1)+'.'+d.getFullYear()};
+
+/* ---------- Events ---------- */
+let tm;$('#q').addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(search,200)});
+$('#sort').addEventListener('change',search);
+$('#brBtn').onclick=()=>$('#brp').classList.toggle('hide');
+$('#brq').addEventListener('input',drawBr);
+$('#brx').onclick=()=>{BR.clear();drawBr();search()};
+$('#brl').addEventListener('change',e=>{const b=e.target.dataset.b;if(b==null)return;e.target.checked?BR.add(b):BR.delete(b);brBtn();search()});
+$('#more').onclick=renderMore;
+$('#list').addEventListener('click',e=>{
+  const eb=e.target.closest('button[data-e]');
+  if(eb){const it=eb.closest('.item');if(it.querySelector('.ed'))return;const i=+eb.dataset.e;
+    it.querySelector('.act').insertAdjacentHTML('beforebegin',`<div class="ed row" style="grid-column:1/-1;flex-wrap:nowrap"><input type="text" id="ei${i}" value="${esc(NOTES[cid(FILT[i])]||'')}" placeholder="Для авто: Toyota Carina, Caldina…" style="flex:1;min-width:0;background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:8px"><button class="p" data-sv="${i}">OK</button></div>`);
+    it.querySelector('#ei'+i).focus();return}
+  const sv=e.target.closest('button[data-sv]');
+  if(sv){const i=+sv.dataset.sv,k=cid(FILT[i]),v=$('#ei'+i).value.trim();
+    if(v){NOTES[k]=v;NC[k]=key_(v)}else{delete NOTES[k];delete NC[k]}
+    dbSet('notes',NOTES);sv.closest('.item').outerHTML=card(FILT[i],i);toast(v?'Сохранено':'Удалено')}
+});
+async function saveJson(){
+  let dl=null;try{dl=await claude.use('downloads')}catch(e){}
+  if(!dl){toast('Сохранение недоступно');return}
+  try{await dl.save({filename:'Правки '+today()+'.json',data:new TextEncoder().encode(JSON.stringify(NOTES)).buffer});toast('Файл готов')}catch(e){if(e&&e.code!=='declined')toast('Не удалось сохранить')}
+}
+$('#nsv').onclick=saveJson;
+$('#nld').onclick=()=>$('#nf').click();
+$('#nf').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const o=JSON.parse(await f.text());Object.keys(o).forEach(k=>{NOTES[k]=String(o[k]);NC[k]=key_(NOTES[k])});await dbSet('notes',NOTES);toast('Загружено правок: '+Object.keys(o).length);search()}catch(err){toast('Не удалось прочитать файл')}e.target.value=''});
+$('#mkv').value=MK;
+$('#mk').onclick=()=>$('#mkp').classList.toggle('hide');
+$('#mkv').addEventListener('input',()=>{MK=Math.max(0,parseFloat($('#mkv').value)||0);try{localStorage.setItem('mk',MK)}catch(e){};$('#list').innerHTML='';SHOWN=0;renderMore();if(!$('#vC').classList.contains('hide'))renderCart()});
+$('#list').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-i]');if(!b)return;
+  const i=+b.dataset.i;addToCart(FILT[i],$('#n'+i).value);b.textContent='В корзине · +';
+});
+$('#cart').addEventListener('input',e=>{
+  const i=e.target.dataset.q;if(i==null)return;
+  CART[i].qty=Math.max(1,parseInt(e.target.value)||1);saveCart();
+  e.target.closest('.item').querySelector('.pr').textContent=fmt(pr(CART[i].p)*CART[i].qty);updSum();
+});
+$('#cart').addEventListener('click',e=>{const b=e.target.closest('button[data-rm]');if(!b)return;CART.splice(+b.dataset.rm,1);saveCart();renderCart()});
+$('#clr').onclick=()=>{if(confirm('Очистить корзину?')){CART=[];saveCart();renderCart();$('#list').innerHTML='';SHOWN=0;renderMore()}};
+const listRows=()=>{const wq=$('#wq').checked,any=FILT.some(x=>NOTES[cid(x)]);return FILT.map(x=>{const o={'Артикул':x.a,'Бренд':x.b,'Наименование':x.n};if(any)o['Для авто']=NOTES[cid(x)]||'';if(wq)o['Кол-во']=x.q;o['Цена']=pr(x.p);return o})};
+let SPM=false;
+const openSp=m=>{SPM=m;$('#spGo').textContent=m?'Отправить файл':'Сохранить файл';$('#sp').classList.remove('hide')};
+$('#exF').onclick=()=>openSp(false);
+$('#snF').onclick=()=>openSp(true);
+$('#spX').onclick=()=>$('#sp').classList.add('hide');
+$('#spGo').onclick=async()=>{await saveXlsx(listRows(),SPM,BR.size===1?[...BR][0]:'');$('#sp').classList.add('hide')};
+$('#exC').onclick=()=>{const any=CART.some(c=>NOTES[cid(c)]);saveXlsx(CART.map(c=>{const o={'Артикул':c.a,'Бренд':c.b,'Наименование':c.n};if(any)o['Для авто']=NOTES[cid(c)]||'';o['Кол-во']=c.qty;o['Цена']=pr(c.p);o['Сумма']=pr(c.p)*c.qty;return o}),false)};
+$('#cp').onclick=async()=>{
+  const t=CART.map(c=>[c.a,c.b,c.n,c.qty,pr(c.p)].join('\t')).join('\n');
+  try{await navigator.clipboard.writeText(t);toast('Скопировано')}catch(e){toast('Копирование недоступно')}
+};
+function tab(n){
+  for(const [t,v] of [['tS','vS'],['tC','vC'],['tU','vU']]){$('#'+t).classList.toggle('on',t===n);$('#'+v).classList.toggle('hide',t!==n)}
+  if(n==='tC')renderCart();
+  if(n==='tS'){$('#list').innerHTML='';SHOWN=0;renderMore()}
+}
+['tS','tC','tU'].forEach(t=>$('#'+t).onclick=()=>tab(t));
+
+$('#file').addEventListener('change',async e=>{
+  const f=e.target.files[0];if(!f)return;
+  $('#meta').textContent='Читаю файл…';
+  try{
+    await new Promise(r=>setTimeout(r,30));
+    DATA=parseSheet(await f.arrayBuffer());
+    META={name:f.name,date:new Date().toLocaleString('ru-RU'),n:DATA.length};
+    await dbSet('rows',DATA);await dbSet('meta',META);
+    brands();showMeta();tab('tS');search();toast('Загружено строк: '+fmt(DATA.length));
+  }catch(err){$('#meta').textContent='Ошибка: '+err.message}
+  e.target.value='';
+});
+function showMeta(){$('#meta').textContent=META?`Текущий прайс: ${META.name} · ${fmt(META.n)} позиций · загружен ${META.date}`:'Прайс ещё не загружен'}
+
+(async()=>{
+  loadCart();renderBadge();
+  const r=await dbGet('rows');META=await dbGet('meta');NOTES=(await dbGet('notes'))||{};Object.keys(NOTES).forEach(k=>{NC[k]=key_(NOTES[k])});
+  if(r&&r.length){DATA=r;DATA.forEach(x=>{if(x.c==null)x.c=key_(x.a+x.b+x.n)});brands()}
+  showMeta();
+  if(!DATA.length)tab('tU');
+  search();
+})();
+</script>
+</body>
+</html>
